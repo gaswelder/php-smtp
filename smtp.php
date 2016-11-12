@@ -16,8 +16,10 @@ class smtp_session
 	/*
 	 * Connect to the server and send HELO/EHLO.
 	 * $addr has URL form, for example "tcp://example.net:25".
+	 * If $userpass is given, it must be an array with username and
+	 * password.
 	 */
-	function __construct($addr)
+	function __construct($addr, $userpass = null)
 	{
 		/*
 		 * Often the real mail server's address is different than
@@ -34,9 +36,14 @@ class smtp_session
 		$this->c = $c;
 		$this->ehlo();
 
-		$this->starttls();
+		if(!$this->starttls()) {
+			return;
+		}
 
-		//$this->auth();
+		if($userpass) {
+			list($user, $pass) = $userpass;
+			$this->auth($user, $pass);
+		}
 	}
 
 	private function resolve($addr)
@@ -64,6 +71,8 @@ class smtp_session
 		if(!$c->startssl()) {
 			return false;
 		}
+
+		$this->ehlo();
 
 		return true;
 	}
@@ -97,6 +106,25 @@ class smtp_session
 			}
 		}
 		$this->extensions = $ext;
+	}
+
+	private function auth($user, $pass)
+	{
+		if(!isset($this->extensions['AUTH'])) {
+			trigger_error("AUTH extension not supported");
+			return false;
+		}
+
+		if(!in_array('PLAIN', $this->extensions['AUTH'])) {
+			trigger_error("Server doesn't support AUTH PLAIN");
+			return false;
+		}
+
+		$auth = base64_encode(chr(0).$user.chr(0).$pass);
+
+		$c = $this->c;
+		$c->writeLine("AUTH PLAIN $auth");
+		return $c->expect(235);
 	}
 
 	function close()
