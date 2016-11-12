@@ -2,16 +2,30 @@
 
 class smtp_session
 {
+	/*
+	 * A tp_client instance
+	 */
 	private $c;
+
+	/*
+	 * List of EHLO extensions, as associative
+	 * array {name => options}.
+	 */
 	private $extensions;
 
+	/*
+	 * Connect to the server and send HELO/EHLO.
+	 * $addr has URL form, for example "tcp://example.net:25".
+	 */
 	function __construct($addr)
 	{
-		$this->c = new tp_client($addr);
-		$this->c->expect(220);
+		$c = new tp_client($addr);
+		$this->c = $c;
 
-		$this->c->writeLine("HELO %s", php_uname('n'));
-		$this->c->expect(250, $lines);
+		$c->expect(220);
+
+		$c->writeLine("HELO %s", php_uname('n'));
+		$c->expect(250, $lines);
 	}
 
 	function close()
@@ -59,10 +73,13 @@ class tp_client
 
 	function __construct($addr) {
 		$this->conn = stream_socket_client($addr);
+		if(!$this->conn) {
+			$this->err = "Couldn't connect to $addr";
+		}
 	}
 
 	function close() {
-		fclose($this->conn);
+		if($this->conn) fclose($this->conn);
 	}
 
 	function err() {
