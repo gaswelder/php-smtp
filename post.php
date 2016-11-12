@@ -1,33 +1,20 @@
 <?php
 require "src/_.php";
+require "lib/opts.php";
 
 exit(main($argv));
 
-function usage() {
-	fwrite(STDERR, "Usage: post [-a <server>] [-s <subj>] <from> <to> < data\n");
-}
-
 function main( $args )
 {
-	$progname = array_shift( $args );
-
-	$subj = "No subject";
 	$server = "tcp://localhost:25";
+	$subj = "No subject";
 
-	while( !empty( $args ) && $args[0][0] == '-' ) {
-		$f = array_shift( $args );
-		switch( $f ) {
-			case "-a":
-				$server = "tcp://" . array_shift( $args );
-				break;
-			case "-s":
-				$subj = array_shift( $args );
-				break;
-			default:
-				fwrite(STDERR, "Unknown flag: $f\n");
-				return 1;
-		}
-	}
+	$syn = "post [-a <server>] [-s <subj>] <from> <to> < data";
+	$opts = array(
+		array('a', 'str', &$server, 'server address'),
+		array('s', 'str', &$subj, 'mail subject')
+	);
+	$args = parse_args($args, $opts, $syn);
 
 	$from = array_shift( $args );
 	$to = array_shift( $args );
