@@ -1,6 +1,8 @@
 <?php
 
-function _usage($progname, $defs, $synopsis = null)
+namespace vacuum;
+
+function usage($progname, $defs, $synopsis = null)
 {
 	if(!$synopsis) {
 		$synopsis = "$progname [opts] [args]";
@@ -39,13 +41,13 @@ function parse_args($args, $defs, $synopsis = null)
 	foreach($defs as $i => $def) {
 		if(count($def) != 4) {
 			err("parse_args: wrong format at index $i");
-			_usage($progname, $defs, $synopsis);
+			usage($progname, $defs, $synopsis);
 			exit(1);
 		}
 		list($key, $type, $ref, $desc) = $def;
 		if(!in_array($type, array_keys($vals))) {
 			err("parse_args: unknown opt key '$type'");
-			_usage($progname, $defs, $synopsis);
+			usage($progname, $defs, $synopsis);
 			exit(1);
 		}
 		$opts[$key] = $def;
@@ -61,7 +63,7 @@ function parse_args($args, $defs, $synopsis = null)
 			$f = $arg[$i];
 			if(!isset($opts[$f])) {
 				err("Unknown flag: $f");
-				_usage($progname, $defs, $synopsis);
+				usage($progname, $defs, $synopsis);
 				exit(1);
 			}
 
@@ -73,15 +75,15 @@ function parse_args($args, $defs, $synopsis = null)
 			}
 
 			if($i != $n-1) {
-				err("$f flag requires an argument");
-				_usage($progname, $defs, $synopsis);
+				err("The '$f' flag requires an argument");
+				usage($progname, $defs, $synopsis);
 				exit(1);
 			}
 
 			$arg = array_shift($args);
 			if(!$arg) {
-				err("$f flag requires an argument");
-				_usage($progname, $defs, $synopsis);
+				err("The '$f' flag requires an argument");
+				usage($progname, $defs, $synopsis);
 				exit(1);
 			}
 

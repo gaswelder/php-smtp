@@ -4,6 +4,8 @@ require "lib/opts.php";
 
 exit(main($argv));
 
+use function vacuum\parse_args;
+
 function main( $args )
 {
 	$server = "tcp://localhost:25";
