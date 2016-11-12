@@ -1,5 +1,5 @@
 <?php
-require "smtp.php";
+require "src/_.php";
 
 exit(main($argv));
 
