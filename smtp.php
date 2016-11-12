@@ -19,11 +19,53 @@ class smtp_session
 	 */
 	function __construct($addr)
 	{
+		/*
+		 * Often the real mail server's address is different than
+		 * the given DNS name, so we do some digging.
+		 */
+		$url = parse_url($addr);
+		$host = $this->resolve($url['host']);
+		fwrite(STDERR, "$url[host] -> $host\n");
+		$addr = "$url[scheme]://$host:$url[port]";
+
 		$c = new tp_client($addr);
 		$c->expect(220);
 
 		$this->c = $c;
 		$this->ehlo();
+
+		$this->starttls();
+
+		//$this->auth();
+	}
+
+	private function resolve($addr)
+	{
+		$info = dns_get_record($addr, DNS_MX|DNS_CNAME);
+		if(!$info) return $addr;
+		foreach($info as $i) {
+			return $i['target'];
+		}
+	}
+
+	private function starttls()
+	{
+		if(!isset($this->extensions['STARTTLS'])) {
+			trigger_error("Server doesn't support STARTTLS");
+			return false;
+		}
+
+		$c = $this->c;
+		$c->writeLine("STARTTLS");
+		if(!$c->expect(220)) {
+			return false;
+		}
+
+		if(!$c->startssl()) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/*
@@ -105,6 +147,12 @@ class tp_client
 		if(!$this->conn) {
 			$this->err = "Couldn't connect to $addr";
 		}
+	}
+
+	function startssl() {
+		if(!$this->conn) return false;
+		return stream_socket_enable_crypto($this->conn, true,
+			STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT);
 	}
 
 	function close() {
