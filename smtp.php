@@ -20,12 +20,41 @@ class smtp_session
 	function __construct($addr)
 	{
 		$c = new tp_client($addr);
-		$this->c = $c;
-
 		$c->expect(220);
 
-		$c->writeLine("HELO %s", php_uname('n'));
+		$this->c = $c;
+		$this->ehlo();
+	}
+
+	/*
+	 * Send an EHLO greeting and parse the server's
+	 * list of extensions
+	 */
+	private function ehlo()
+	{
+		$c = $this->c;
+		$c->writeLine("EHLO %s", php_uname('n'));
 		$c->expect(250, $lines);
+
+		if($c->err()) return;
+
+		/*
+		 * Parse the list of EHLO extensions
+		 */
+		array_shift($lines);
+		$ext = array();
+		foreach($lines as $line) {
+			$line = trim($line);
+			$parts = explode(' ', $line);
+			if(count($parts) == 1) {
+				$ext[$line] = true;
+			}
+			else {
+				$name = array_shift($parts);
+				$ext[$name] = $parts;
+			}
+		}
+		$this->extensions = $ext;
 	}
 
 	function close()
