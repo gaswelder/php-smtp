@@ -30,16 +30,25 @@ class smtp_session
 		fwrite(STDERR, "$url[host] -> $host\n");
 		$addr = "$url[scheme]://$host:$url[port]";
 
+		/*
+		 * Connect to the server and start a session
+		 */
 		$c = new tp_client($addr);
 		$c->expect(220);
-
 		$this->c = $c;
 		$this->ehlo();
 
+		/*
+		 * Upgrade to SSL if possible
+		 */
 		if(!$this->starttls()) {
 			return;
 		}
 
+		/*
+		 * If SSL is available and login and password are given,
+		 * authorize.
+		 */
 		if($user) {
 			$this->auth($user, $pass);
 		}
@@ -145,6 +154,11 @@ class smtp_session
 		return $this->c->err();
 	}
 
+	/*
+	 * Sends a message.
+	 * 'to' is an array of recipient addresses.
+	 * 'data' is MIME-formatted message string
+	 */
 	function send_mail($from, $to, $data)
 	{
 		$c = $this->c;
