@@ -13,6 +13,12 @@ class smtp_session
 	 */
 	private $extensions;
 
+	private $logfunc = null;
+
+	private $user;
+	private $pass;
+	private $addr;
+
 	/*
 	 * Connect to the server and send HELO/EHLO.
 	 * $addr has URL form, for example "tcp://example.net:25".
@@ -21,19 +27,34 @@ class smtp_session
 	 */
 	function __construct($addr, $user = null, $pass = null)
 	{
+		$this->addr = $addr;
+		$this->user = $user;
+		$this->pass = $pass;
+	}
+
+	/*
+	 * Defines a function that will receive messages for logging.
+	 */
+	function set_logfunc($f)
+	{
+		$this->logfunc = $f;
+	}
+
+	function connect()
+	{
 		/*
 		 * Often the real mail server's address is different than
 		 * the given DNS name, so we do some digging.
 		 */
-		$url = parse_url($addr);
+		$url = parse_url($this->addr);
 		$host = $this->resolve($url['host']);
-		fwrite(STDERR, "$url[host] -> $host\n");
-		$addr = "$url[scheme]://$host:$url[port]";
+		$this->addr = "$url[scheme]://$host:$url[port]";
+		$this->log("$url[host] -> $host\n");
 
 		/*
 		 * Connect to the server and start a session
 		 */
-		$c = new tp_client($addr);
+		$c = new tp_client($this->addr, array($this, 'log'));
 		$c->expect(220);
 		$this->c = $c;
 		$this->ehlo();
@@ -49,8 +70,8 @@ class smtp_session
 		 * If SSL is available and login and password are given,
 		 * authorize.
 		 */
-		if($user) {
-			$this->auth($user, $pass);
+		if($this->user) {
+			$this->auth($this->user, $this->pass);
 		}
 	}
 
@@ -161,6 +182,9 @@ class smtp_session
 	 */
 	function send_mail($from, $to, $data)
 	{
+		if(!$this->c) {
+			$this->connect();
+		}
 		$c = $this->c;
 
 		/*
@@ -183,6 +207,12 @@ class smtp_session
 		$c->writeLine( $data );
 		$c->writeLine( "." );
 		$c->expect(250);
+	}
+
+	function log($s) {
+		$f = $this->logfunc;
+		if(!$f) return;
+		$f($s);
 	}
 }
 

@@ -5,7 +5,10 @@ class tp_client
 	private $err = null;
 	private $conn = null;
 
-	function __construct($addr) {
+	private $logfunc = null;
+
+	function __construct($addr, $logfunc = null) {
+		$this->logfunc = $logfunc;
 		$this->conn = stream_socket_client($addr);
 		if(!$this->conn) {
 			$this->err = "Couldn't connect to $addr";
@@ -52,7 +55,7 @@ class tp_client
 
 		while(1) {
 			$line = fgets($this->conn);
-			fwrite(STDERR, "S: $line");
+			$this->msg("S: $line");
 
 			$code = substr($line, 0, 3);
 			$sep = $line[3];
@@ -96,8 +99,14 @@ class tp_client
 		if($this->err) {
 			return false;
 		}
-		fwrite(STDERR, "C: $s");
+		$this->msg("C: $s");
 		return fwrite($this->conn, $s);
+	}
+
+	function msg($s) {
+		$f = $this->logfunc;
+		if(!$f) return;
+		$f($s);
 	}
 }
 
