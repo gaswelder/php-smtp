@@ -163,6 +163,12 @@ class smtp_session
 	{
 		$c = $this->c;
 
+		/*
+		 * Prepend a dot to each line starting with a dot
+		 * (https://tools.ietf.org/html/rfc5321#section-4.5.2)
+		 */
+		$data = str_replace("\r\n.", "\r\n..", $data);
+
 		$c->writeLine("MAIL FROM:<$from>");
 		$c->expect(250);
 
