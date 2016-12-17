@@ -19,7 +19,7 @@ class smtp_session
 	 * If $userpass is given, it must be an array with username and
 	 * password.
 	 */
-	function __construct($addr, $userpass = null)
+	function __construct($addr, $user = null, $pass = null)
 	{
 		/*
 		 * Often the real mail server's address is different than
@@ -40,8 +40,7 @@ class smtp_session
 			return;
 		}
 
-		if($userpass) {
-			list($user, $pass) = $userpass;
+		if($user) {
 			$this->auth($user, $pass);
 		}
 	}
@@ -153,8 +152,10 @@ class smtp_session
 		$c->writeLine("MAIL FROM:<$from>");
 		$c->expect(250);
 
-		$c->writeLine("RCPT TO:<$to>");
-		$c->expect(250);
+		foreach($to as $des) {
+			$c->writeLine("RCPT TO:<$des>");
+			$c->expect(250);
+		}
 
 		$c->writeLine("DATA");
 		$c->expect(354);
