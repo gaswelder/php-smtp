@@ -54,7 +54,9 @@ class smtp_session
 		/*
 		 * Connect to the server and start a session
 		 */
-		$c = new tp_client($this->addr, array($this, 'log'));
+		$c = new tp_client();
+		$c->setLogger([$this, 'log']);
+		$c->connect($this->addr);
 		$c->expect(220);
 		$this->c = $c;
 		$this->ehlo();

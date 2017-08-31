@@ -7,12 +7,28 @@ class tp_client
 
 	private $logfunc = null;
 
-	function __construct($addr, $logfunc = null) {
-		$this->logfunc = $logfunc;
+	/**
+	 * Connects to the given address.
+	 *
+	 * @param string $addr
+	 * @throws Exception
+	 */
+	function connect($addr)
+	{
 		$this->conn = stream_socket_client($addr);
-		if(!$this->conn) {
-			$this->err = "Couldn't connect to $addr";
+		if (!$this->conn) {
+			throw new Exception("couldn't connect to $addr");
 		}
+	}
+
+	/**
+	 * Sets a logger callback.
+	 *
+	 * @param callable $func
+	 */
+	function setLogger($func)
+	{
+		$this->logfunc = $func;
 	}
 
 	function startssl() {
