@@ -2,7 +2,6 @@
 
 class tp_client
 {
-	private $err = null;
 	private $conn = null;
 
 	private $logfunc = null;
@@ -44,24 +43,12 @@ class tp_client
 		if($this->conn) fclose($this->conn);
 	}
 
-	function err() {
-		return $this->err;
-	}
-
 	function expect($code, &$lines = null)
 	{
-		if($this->err) {
-			return false;
-		}
-
 		$rcode = $this->get_response($lines);
-		if($this->err) return false;
-
-		if($rcode != $code) {
-			$this->err = "Expected $code, got $rcode ($lines[0])";
-			return false;
+		if ($rcode != $code) {
+			throw new Exception("expected $code, got $rcode ($lines[0])");
 		}
-		return true;
 	}
 
 	private function get_response(&$lines)
@@ -81,8 +68,7 @@ class tp_client
 				$rcode = $code;
 			}
 			else if($code != $rcode) {
-				$this->err = "Incoherent codes in multiline response";
-				return 0;
+				throw new Exception("incoherent codes in multiline response");
 			}
 
 			$lines[] = $line;
@@ -91,9 +77,8 @@ class tp_client
 				break;
 			}
 
-			if($sep != '-') {
-				$this->err = "Malformed multiline response";
-				return 0;
+			if ($sep != '-') {
+				throw new Exception("malformed multiline response");
 			}
 		}
 		return $rcode;
@@ -101,20 +86,12 @@ class tp_client
 
 	function writeLine($fmt, $args___ = null)
 	{
-		if($this->err) {
-			return false;
-		}
-
 		$args = func_get_args();
 		$line = call_user_func_array('sprintf', $args);
-
 		return $this->write($line."\r\n");
 	}
 
 	function write($s) {
-		if($this->err) {
-			return false;
-		}
 		$this->msg("C: $s");
 		return fwrite($this->conn, $s);
 	}
