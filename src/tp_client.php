@@ -30,13 +30,18 @@ class tp_client
 		$this->logfunc = $func;
 	}
 
-	function startssl() {
-		if(!$this->conn) return false;
-
-		stream_context_set_option($this->conn, 'ssl', 'verify_peer', false);
-
-		return stream_socket_enable_crypto($this->conn, true,
-			STREAM_CRYPTO_METHOD_TLS_CLIENT);
+	/**
+	 * Upgrades current connection to SSL.
+	 *
+	 * @param array $options Associative array of ssl context options (http://php.net/manual/en/context.ssl.php)
+	 * @return bool
+	 */
+	function startssl($options = [])
+	{
+		foreach ($options as $key => $value) {
+			stream_context_set_option($this->conn, 'ssl', $key, $value);
+		}
+		return stream_socket_enable_crypto($this->conn, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
 	}
 
 	function close() {
