@@ -119,7 +119,12 @@ class Client
 		}
 		$ok = stream_socket_enable_crypto($this->conn, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
 		if (!$ok) {
-			throw new Exception("failed to enable crypto");
+			$msg = "failed to enable crypto";
+			$e = error_get_last();
+			if ($e) {
+				$msg .= ': '.$e['message'];
+			}
+			throw new Exception($msg);
 		}
 
 		$this->ehlo();
