@@ -1,112 +1,71 @@
 <?php
 
-class Mail
+class response
 {
-	public $date;
-	public $from;
-	public $to;
-	public $subject;
-	public $body = '';
-
-	function __construct()
-	{
-		$this->date = date('r');
-	}
-
-	function compose()
-	{
-		$headers = array_filter([
-			"Date" => $this->date,
-			"Subject" => $this->subject,
-			"From" => $this->from,
-			"To" => $this->to
-		]);
-
-		$data = "";
-		foreach ($headers as $n => $v) {
-			$data .= "$n: $v\r\n";
-		}
-		$data .= "\r\n";
-		$data .= $text."\r\n";
-		return $data;
-	}
+	public $code;
+	public $lines = [];
 }
 
-class smtp_session
+class Client
 {
-	/*
-	 * A tp_client instance
+	/**
+	 * Connection to the server.
+	 *
+	 * @var resource
 	 */
-	private $c;
+	private $conn = null;
 
-	/*
+	/**
 	 * List of EHLO extensions, as associative
 	 * array {name => options}.
+	 *
+	 * @var array
 	 */
-	private $extensions;
+	private $extensions = [];
 
+	/**
+	 * Logger function
+	 *
+	 * @var callable
+	 */
 	private $logfunc = null;
-
-	private $user;
-	private $pass;
-	private $addr;
-
-	/*
-	 * Connect to the server and send HELO/EHLO.
-	 * $addr has URL form, for example "tcp://example.net:25".
-	 * If $userpass is given, it must be an array with username and
-	 * password.
-	 */
-	function __construct($addr, $user = null, $pass = null)
-	{
-		$this->addr = $addr;
-		$this->user = $user;
-		$this->pass = $pass;
-	}
 
 	/*
 	 * Defines a function that will receive messages for logging.
 	 */
-	function set_logfunc($f)
+	function setLogger($f)
 	{
 		$this->logfunc = $f;
 	}
 
-	function connect()
+	/**
+	 * Connects to the server at the given address.
+	 *
+	 * @param string $addr Address in form "tcp://hostname:port".
+	 * @throws Exception
+	 */
+	function connect($addr)
 	{
 		/*
 		 * Often the real mail server's address is different than
 		 * the given DNS name, so we do some digging.
 		 */
-		$url = parse_url($this->addr);
+		$url = parse_url($addr);
 		$host = $this->resolve($url['host']);
 		$this->addr = "$url[scheme]://$host:$url[port]";
-		$this->log("$url[host] -> $host\n");
+		$this->log("Resolved $url[host] to $host\n");
 
 		/*
 		 * Connect to the server and start a session
 		 */
-		$c = new tp_client();
-		$c->setLogger([$this, 'log']);
-		$c->connect($this->addr);
-		$c->expect(220);
-		$this->c = $c;
+		$this->conn = stream_socket_client($addr);
+		if (!$this->conn) {
+			throw new Exception("couldn't connect to $addr");
+		}
+		$this->expect(220);
+
 		$this->ehlo();
-
-		/*
-		 * Upgrade to SSL if possible
-		 */
-		if(!$this->starttls()) {
-			return;
-		}
-
-		/*
-		 * If SSL is available and login and password are given,
-		 * authorize.
-		 */
-		if($this->user) {
-			$this->auth($this->user, $this->pass);
-		}
+		$this->starttls();
 	}
 
 	private function resolve($addr)
@@ -118,26 +77,46 @@ class smtp_session
 		}
 	}
 
-	private function starttls()
+	function login($user, $pass)
+	{
+		if(!isset($this->extensions['AUTH'])) {
+			throw new Exception("server doesn't support AUTH extension");
+		}
+
+		if(!in_array('PLAIN', $this->extensions['AUTH'])) {
+			throw new Exception("Server doesn't support AUTH PLAIN");
+		}
+
+		$auth = base64_encode(chr(0).$user.chr(0).$pass);
+
+		$this->writeLine("AUTH PLAIN $auth");
+		$this->expect(235);
+	}
+	
+	/**
+	 * Upgrades current connection to SSL.
+	 *
+	 * @param array $options Associative array of ssl context options (http://php.net/manual/en/context.ssl.php)
+	 * @throws Exception
+	 */
+	private function starttls($options = [])
 	{
 		if(!isset($this->extensions['STARTTLS'])) {
-			trigger_error("Server doesn't support STARTTLS");
-			return false;
+			throw new Exception("server doesn't support STARTTLS");
 		}
 
-		$c = $this->c;
-		$c->writeLine("STARTTLS");
-		if(!$c->expect(220)) {
-			return false;
-		}
+		$this->writeLine("STARTTLS");
+		$this->expect(220);
 
-		if(!$c->startssl()) {
-			return false;
+		foreach ($options as $key => $value) {
+			stream_context_set_option($this->conn, 'ssl', $key, $value);
+		}
+		$ok = stream_socket_enable_crypto($this->conn, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+		if (!$ok) {
+			throw new Exception("failed to enable crypto");
 		}
 
 		$this->ehlo();
-
-		return true;
 	}
 
 	/*
@@ -146,15 +125,13 @@ class smtp_session
 	 */
 	private function ehlo()
 	{
-		$c = $this->c;
-		$c->writeLine("EHLO %s", php_uname('n'));
-		$c->expect(250, $lines);
-
-		if($c->err()) return;
+		$this->writeLine("EHLO " . php_uname('n'));
+		$response = $this->expect(250);
 
 		/*
 		 * Parse the list of EHLO extensions
 		 */
+		$lines = $response->lines;
 		array_shift($lines);
 		$ext = array();
 		foreach($lines as $line) {
@@ -171,44 +148,6 @@ class smtp_session
 		$this->extensions = $ext;
 	}
 
-	private function auth($user, $pass)
-	{
-		if(!isset($this->extensions['AUTH'])) {
-			trigger_error("AUTH extension not supported");
-			return false;
-		}
-
-		if(!in_array('PLAIN', $this->extensions['AUTH'])) {
-			trigger_error("Server doesn't support AUTH PLAIN");
-			return false;
-		}
-
-		$auth = base64_encode(chr(0).$user.chr(0).$pass);
-
-		$c = $this->c;
-		$c->writeLine("AUTH PLAIN $auth");
-		return $c->expect(235);
-	}
-
-	function close()
-	{
-		$this->c->writeLine("QUIT");
-		$this->c->expect(221);
-		$this->c->close();
-		$this->c = null;
-	}
-
-	function __destruct()
-	{
-		if($this->c) $this->close();
-	}
-
-	function err()
-	{
-		if(!$this->c) return null;
-		return $this->c->err();
-	}
-
 	/*
 	 * Sends a message.
 	 * 'to' is an array of recipient addresses.
@@ -216,31 +155,85 @@ class smtp_session
 	 */
 	function send(Mail $mail, $from, $to)
 	{
-		$c = $this->c;
-
 		/*
 		 * Prepend a dot to each line starting with a dot
 		 * (https://tools.ietf.org/html/rfc5321#section-4.5.2)
 		 */
 		$data = str_replace("\r\n.", "\r\n..", $data);
 
-		$c->writeLine("MAIL FROM:<$from>");
-		$c->expect(250);
+		$this->writeLine("MAIL FROM:<$from>");
+		$this->expect(250);
 
 		foreach ($to as $des) {
-			$c->writeLine("RCPT TO:<$des>");
-			$c->expect(250);
+			$this->writeLine("RCPT TO:<$des>");
+			$this->expect(250);
 		}
 
-		$c->writeLine("DATA");
-		$c->expect(354);
+		$this->writeLine("DATA");
+		$this->expect(354);
 
-		$c->writeLine( $data );
-		$c->writeLine( "." );
-		$c->expect(250);
+		$this->writeLine( $data );
+		$this->writeLine( "." );
+		$this->expect(250);
 	}
 
-	function log($s) {
+	function close()
+	{
+		if (!$this->conn) {
+			return;
+		}
+		$this->writeLine("QUIT");
+		$this->expect(221);
+		fclose($this->conn);
+		$this->conn = null;
+	}
+
+	function __destruct()
+	{
+		$this->close();
+	}
+
+	private function expect($code)
+	{
+		$response = $this->getResponse();
+		if ($response->code != $code) {
+			throw new Exception("expected $code, got $response->code ($response->lines[0])");
+		}
+		return $response;
+	}
+
+	private function getResponse()
+	{
+		$response = new response();
+
+		while(1) {
+			$line = fgets($this->conn);
+			$this->log("S: $line");
+
+			$response->code = substr($line, 0, 3);
+			$sep = $line[3];
+			$line = substr($line, 4);
+
+			$response->lines[] = $line;
+
+			if($sep == ' ') {
+				break;
+			}
+
+			if ($sep != '-') {
+				throw new Exception("malformed multiline response: ".implode('; ', $response->lines));
+			}
+		}
+		return $response;
+	}
+
+	private function writeLine($line)
+	{
+		$this->log("C: $line");
+		return fwrite($this->conn, $line."\r\n");
+	}
+
+	private function log($s) {
 		$f = $this->logfunc;
 		if(!$f) return;
 		$f($s);

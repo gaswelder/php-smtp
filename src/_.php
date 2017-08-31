@@ -1,7 +1,7 @@
 <?php
 
 $dir = dirname(__FILE__);
+require $dir.'/Mail.php';
 require $dir.'/session.php';
-require $dir.'/tp_client.php';
 
 ?>
