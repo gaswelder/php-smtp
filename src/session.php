@@ -1,5 +1,37 @@
 <?php
 
+class Mail
+{
+	public $date;
+	public $from;
+	public $to;
+	public $subject;
+	public $body = '';
+
+	function __construct()
+	{
+		$this->date = date('r');
+	}
+
+	function compose()
+	{
+		$headers = array_filter([
+			"Date" => $this->date,
+			"Subject" => $this->subject,
+			"From" => $this->from,
+			"To" => $this->to
+		]);
+
+		$data = "";
+		foreach ($headers as $n => $v) {
+			$data .= "$n: $v\r\n";
+		}
+		$data .= "\r\n";
+		$data .= $text."\r\n";
+		return $data;
+	}
+}
+
 class smtp_session
 {
 	/*
@@ -182,11 +214,8 @@ class smtp_session
 	 * 'to' is an array of recipient addresses.
 	 * 'data' is MIME-formatted message string
 	 */
-	function send_mail($from, $to, $data)
+	function send(Mail $mail, $from, $to)
 	{
-		if(!$this->c) {
-			$this->connect();
-		}
 		$c = $this->c;
 
 		/*
@@ -198,7 +227,7 @@ class smtp_session
 		$c->writeLine("MAIL FROM:<$from>");
 		$c->expect(250);
 
-		foreach($to as $des) {
+		foreach ($to as $des) {
 			$c->writeLine("RCPT TO:<$des>");
 			$c->expect(250);
 		}
