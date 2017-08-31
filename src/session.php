@@ -30,12 +30,15 @@ class Client
 	 */
 	private $logfunc = null;
 
-	/*
-	 * Defines a function that will receive messages for logging.
+	/**
+	 * @var array $options Associative array of ssl context options (http://php.net/manual/en/context.ssl.php)
 	 */
-	function setLogger($f)
+	private $ssl_options = [];
+
+	function __construct($options = [])
 	{
-		$this->logfunc = $f;
+		$this->ssl_options = $options['ssl'] ?? [];
+		$this->logfunc = $options['logger'] ?? null;
 	}
 
 	/**
@@ -96,10 +99,10 @@ class Client
 	/**
 	 * Upgrades current connection to SSL.
 	 *
-	 * @param array $options Associative array of ssl context options (http://php.net/manual/en/context.ssl.php)
+	 
 	 * @throws Exception
 	 */
-	private function starttls($options = [])
+	private function starttls()
 	{
 		if(!isset($this->extensions['STARTTLS'])) {
 			throw new Exception("server doesn't support STARTTLS");
@@ -108,8 +111,11 @@ class Client
 		$this->writeLine("STARTTLS");
 		$this->expect(220);
 
-		foreach ($options as $key => $value) {
-			stream_context_set_option($this->conn, 'ssl', $key, $value);
+		foreach ($this->ssl_options as $key => $value) {
+			$ok = stream_context_set_option($this->conn, 'ssl', $key, $value);
+			if (!$ok) {
+				throw new Exception("failed to set ssl option '$key'");
+			}
 		}
 		$ok = stream_socket_enable_crypto($this->conn, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
 		if (!$ok) {
