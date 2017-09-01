@@ -27,7 +27,7 @@ class Mail
 			$data .= "$n: $v\r\n";
 		}
 		$data .= "\r\n";
-		$data .= $text."\r\n";
+		$data .= $this->body."\r\n";
 		return $data;
 	}
 }

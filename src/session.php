@@ -49,19 +49,20 @@ class Client
 	 */
 	function connect($addr)
 	{
+		$this->log("Connecting to $addr");
 		/*
 		 * Often the real mail server's address is different than
 		 * the given DNS name, so we do some digging.
 		 */
 		$url = parse_url($addr);
 		$host = $this->resolve($url['host']);
-		$this->addr = "$url[scheme]://$host:$url[port]";
 		$this->log("Resolved $url[host] to $host\n");
+		$resolvedAddr = "$url[scheme]://$host:$url[port]";
 
 		/*
 		 * Connect to the server and start a session
 		 */
-		$this->conn = stream_socket_client($addr);
+		$this->conn = stream_socket_client($resolvedAddr);
 		if (!$this->conn) {
 			throw new Exception("couldn't connect to $addr");
 		}
@@ -166,6 +167,7 @@ class Client
 	 */
 	function send(Mail $mail, $from, $to)
 	{
+		$data = $mail->compose();
 		/*
 		 * Prepend a dot to each line starting with a dot
 		 * (https://tools.ietf.org/html/rfc5321#section-4.5.2)
@@ -246,9 +248,7 @@ class Client
 
 	private function log($s) {
 		$f = $this->logfunc;
-		if(!$f) return;
-		$f($s);
+		if (!$f) return;
+		$f(rtrim($s, "\r\n"));
 	}
 }
-
-?>
