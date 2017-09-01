@@ -1,0 +1,7 @@
+{
+    "name": "gaswelder/smtp",
+    "description": "SMTP client",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {"psr-4": {"gaswelder\\smtp\\": "src/"}}
+}
