@@ -44,7 +44,7 @@ class Client
 	/**
 	 * Connects to the server at the given address.
 	 *
-	 * @param string $addr Address in form "tcp://hostname:port".
+	 * @param string $addr Address in form "hostname:port".
 	 * @throws Exception
 	 */
 	function connect($addr)
@@ -57,12 +57,12 @@ class Client
 		$url = parse_url($addr);
 		$host = $this->resolve($url['host']);
 		$this->log("Resolved $url[host] to $host\n");
-		$resolvedAddr = "$url[scheme]://$host:$url[port]";
+		$resolvedAddr = "$host:$url[port]";
 
 		/*
 		 * Connect to the server and start a session
 		 */
-		$this->conn = stream_socket_client($resolvedAddr);
+		$this->conn = stream_socket_client("tcp://".$resolvedAddr);
 		if (!$this->conn) {
 			throw new Exception("couldn't connect to $addr");
 		}
