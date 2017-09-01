@@ -81,6 +81,13 @@ class Client
 		}
 	}
 
+	/**
+	 * Performs authentication on the server.
+	 *
+	 * @param string $user
+	 * @param string $pass
+	 * @throws Exception
+	 */
 	function login($user, $pass)
 	{
 		if(!isset($this->extensions['AUTH'])) {
@@ -100,7 +107,6 @@ class Client
 	/**
 	 * Upgrades current connection to SSL.
 	 *
-	 
 	 * @throws Exception
 	 */
 	private function starttls()
@@ -160,10 +166,12 @@ class Client
 		$this->extensions = $ext;
 	}
 
-	/*
+	/**
 	 * Sends a message.
-	 * 'to' is an array of recipient addresses.
-	 * 'data' is MIME-formatted message string
+	 *
+	 * @param Mail $mail
+	 * @param string $from
+	 * @param array $to List of recipient addresses
 	 */
 	function send(Mail $mail, $from, $to)
 	{
@@ -190,6 +198,9 @@ class Client
 		$this->expect(250);
 	}
 
+	/**
+	 * Disconnects from the server.
+	 */
 	function close()
 	{
 		if (!$this->conn) {
