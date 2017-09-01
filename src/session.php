@@ -170,8 +170,8 @@ class Client
 	 * Sends a message.
 	 *
 	 * @param Mail $mail
-	 * @param string $from
-	 * @param array $to List of recipient addresses
+	 * @param string $from Plain email address (no quotes, only name@host)
+	 * @param array|string $to List of recipient addresses or a single address
 	 */
 	function send(Mail $mail, $from, $to)
 	{
@@ -185,6 +185,9 @@ class Client
 		$this->writeLine("MAIL FROM:<$from>");
 		$this->expect(250);
 
+		if (!is_array($to)) {
+			$to = [$to];
+		}
 		foreach ($to as $des) {
 			$this->writeLine("RCPT TO:<$des>");
 			$this->expect(250);
