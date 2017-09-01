@@ -78,3 +78,8 @@ $client = new Client([
 	}
 ]);
 ```
+
+
+## Installation
+
+	composer require gaswelder/smtp
