@@ -75,8 +75,8 @@ class Client
 	private function resolve($addr)
 	{
 		$info = dns_get_record($addr, DNS_MX|DNS_CNAME);
-		if(!$info) return $addr;
-		foreach($info as $i) {
+		if (!$info) return $addr;
+		foreach ($info as $i) {
 			return $i['target'];
 		}
 	}
@@ -90,11 +90,11 @@ class Client
 	 */
 	function login($user, $pass)
 	{
-		if(!isset($this->extensions['AUTH'])) {
+		if (!isset($this->extensions['AUTH'])) {
 			throw new Exception("server doesn't support AUTH extension");
 		}
 
-		if(!in_array('PLAIN', $this->extensions['AUTH'])) {
+		if (!in_array('PLAIN', $this->extensions['AUTH'])) {
 			throw new Exception("Server doesn't support AUTH PLAIN");
 		}
 
@@ -103,7 +103,7 @@ class Client
 		$this->writeLine("AUTH PLAIN $auth");
 		$this->expect(235);
 	}
-	
+
 	/**
 	 * Upgrades current connection to SSL.
 	 *
@@ -111,7 +111,7 @@ class Client
 	 */
 	private function starttls()
 	{
-		if(!isset($this->extensions['STARTTLS'])) {
+		if (!isset($this->extensions['STARTTLS'])) {
 			throw new Exception("server doesn't support STARTTLS");
 		}
 
@@ -143,7 +143,7 @@ class Client
 	 */
 	private function ehlo()
 	{
-		$this->writeLine("EHLO " . php_uname('n'));
+		$this->writeLine("EHLO ".php_uname('n'));
 		$response = $this->expect(250);
 
 		/*
@@ -152,10 +152,10 @@ class Client
 		$lines = $response->lines;
 		array_shift($lines);
 		$ext = array();
-		foreach($lines as $line) {
+		foreach ($lines as $line) {
 			$line = trim($line);
 			$parts = explode(' ', $line);
-			if(count($parts) == 1) {
+			if (count($parts) == 1) {
 				$ext[$line] = true;
 			}
 			else {
@@ -193,8 +193,8 @@ class Client
 		$this->writeLine("DATA");
 		$this->expect(354);
 
-		$this->writeLine( $data );
-		$this->writeLine( "." );
+		$this->writeLine($data);
+		$this->writeLine(".");
 		$this->expect(250);
 	}
 
@@ -230,7 +230,7 @@ class Client
 	{
 		$response = new response();
 
-		while(1) {
+		while (1) {
 			$line = fgets($this->conn);
 			$this->log("S: $line");
 
@@ -257,9 +257,11 @@ class Client
 		return fwrite($this->conn, $line."\r\n");
 	}
 
-	private function log($s) {
+	private function log($s)
+	{
 		$f = $this->logfunc;
 		if (!$f) return;
 		$f(rtrim($s, "\r\n"));
 	}
 }
+
