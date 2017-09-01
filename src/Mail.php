@@ -1,5 +1,7 @@
 <?php
 
+namespace gaswelder\smtp;
+
 class Mail
 {
 	public $date;

@@ -1,5 +1,7 @@
 <?php
 
+namespace gaswelder\smtp;
+
 class response
 {
 	public $code;
@@ -267,4 +269,3 @@ class Client
 		$f(rtrim($s, "\r\n"));
 	}
 }
-
